@@ -6,10 +6,10 @@ option java_package = "com.proto.report";
 option java_multiple_files = true;
 
 message AddMoveLeadLogRequest {
-  string userId = 1;
-  string leadId = 2;
-  string prevStatusId = 3;
-  string nextStatusId = 4;
+  int64 userId = 1;
+  int64 leadId = 2;
+  int64 prevStatusId = 3;
+  int64 nextStatusId = 4;
 }
 
 message AddMoveLeadLogResponse {
