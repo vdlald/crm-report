@@ -4,6 +4,7 @@ import com.proto.report.AddMoveLeadLogRequest;
 import com.proto.report.AddMoveLeadLogResponse;
 import com.proto.report.ReportServiceGrpc;
 import com.vladislav.crm.report.documents.MoveLeadLog;
+import com.vladislav.crm.report.operations.SaveMoveLeadLogOperation;
 import com.vladislav.crm.report.repositories.MoveLeadLogRepository;
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +15,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor(onConstructor = @__(@Autowired))
 public class ReportService extends ReportServiceGrpc.ReportServiceImplBase {
 
-    private final MoveLeadLogRepository moveLeadLogRepository;
+    private final SaveMoveLeadLogOperation saveMoveLeadLogOperation;
 
     @Override
     public void addMoveLeadLog(AddMoveLeadLogRequest request, StreamObserver<AddMoveLeadLogResponse> responseObserver) {
@@ -24,7 +25,7 @@ public class ReportService extends ReportServiceGrpc.ReportServiceImplBase {
                 .setNextStatusId(request.getNextStatusId())
                 .setPrevStatusId(request.getPrevStatusId());
 
-        moveLeadLogRepository.save(log);
+        saveMoveLeadLogOperation.execute(log);
 
         responseObserver.onNext(AddMoveLeadLogResponse.newBuilder().build());
         responseObserver.onCompleted();
