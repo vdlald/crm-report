@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package todo;
+
+option java_package = "com.proto.report";
+option java_multiple_files = true;
+
+message AddMoveLeadLogRequest {
+  string userId = 1;
+  string leadId = 2;
+  string prevStatusId = 3;
+  string nextStatusId = 4;
+}
+
+message AddMoveLeadLogResponse {
+}
+
+service ReportService {
+  rpc AddMoveLeadLog(AddMoveLeadLogRequest) returns (AddMoveLeadLogResponse);
+}
