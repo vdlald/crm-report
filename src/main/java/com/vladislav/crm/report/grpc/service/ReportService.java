@@ -5,7 +5,6 @@ import com.proto.report.AddMoveLeadLogResponse;
 import com.proto.report.ReportServiceGrpc;
 import com.vladislav.crm.report.documents.MoveLeadLog;
 import com.vladislav.crm.report.operations.SaveMoveLeadLogOperation;
-import com.vladislav.crm.report.repositories.MoveLeadLogRepository;
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
