@@ -29,18 +29,7 @@ public class WeeklyReportJob implements Runnable {
                 localizedWeek.getFirstWeekDateTime(), localizedWeek.getFirstWeekDateTime()
         );
 
-        final Map<Pair<Long, Long>, List<MoveLeadLog>> indexToLeads = new HashMap<>();
-        all.forEach(log -> {
-            final Pair<Long, Long> indexPair = Pair.of(log.getUserId(), log.getLeadId());
-            final List<MoveLeadLog> userIds = indexToLeads.get(indexPair);
-            if (userIds == null) {
-                final ArrayList<MoveLeadLog> newList = new ArrayList<>();
-                newList.add(log);
-                indexToLeads.put(indexPair, newList);
-            } else {
-                userIds.add(log);
-            }
-        });
+        final Map<Pair<Long, Long>, List<MoveLeadLog>> indexToLeads = mapMoveLeadLogs(all);
 
         indexToLeads.entrySet()
                 .parallelStream()
@@ -63,6 +52,7 @@ public class WeeklyReportJob implements Runnable {
                         Map::putAll
                 )
                 .values()
+                .parallelStream()
                 .forEach(this::handle);
     }
 
@@ -82,7 +72,24 @@ public class WeeklyReportJob implements Runnable {
         return Pair.of(key.getFirst(), leadMoveReport);
     }
 
+    // todo: implement
     private void handle(WeeklyReport report) {
         System.out.println(report);
+    }
+
+    private static Map<Pair<Long, Long>, List<MoveLeadLog>> mapMoveLeadLogs(Collection<MoveLeadLog> all) {
+        final Map<Pair<Long, Long>, List<MoveLeadLog>> indexToLeads = new HashMap<>();
+        all.forEach(log -> {
+            final Pair<Long, Long> indexPair = Pair.of(log.getUserId(), log.getLeadId());
+            final List<MoveLeadLog> userIds = indexToLeads.get(indexPair);
+            if (userIds == null) {
+                final ArrayList<MoveLeadLog> newList = new ArrayList<>();
+                newList.add(log);
+                indexToLeads.put(indexPair, newList);
+            } else {
+                userIds.add(log);
+            }
+        });
+        return indexToLeads;
     }
 }
