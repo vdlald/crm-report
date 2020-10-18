@@ -1,10 +1,15 @@
 package com.vladislav.crm.report.jobs;
 
+import com.proto.users.GetUserRequest;
+import com.proto.users.UserServiceGrpc;
+import com.vladislav.crm.report.clients.EmailClient;
 import com.vladislav.crm.report.documents.MoveLeadLog;
+import com.vladislav.crm.report.grpc.DefaultStreamObserver;
 import com.vladislav.crm.report.operations.GetAllMoveLeadLogOperation;
 import com.vladislav.crm.report.pojo.WeeklyReport;
 import com.vladislav.crm.report.utils.LocalizedWeek;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.util.Pair;
@@ -14,11 +19,14 @@ import org.springframework.stereotype.Component;
 import java.util.*;
 import java.util.function.Supplier;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor(onConstructor = @__(@Autowired))
 public class WeeklyReportJob implements Runnable {
 
     private final GetAllMoveLeadLogOperation getAllMoveLeadLogOperation;
+    private final UserServiceGrpc.UserServiceStub userService;
+    private final EmailClient emailClient;
 
     @Override
     @Scheduled(cron = "0 0 1 * * MON")
@@ -72,9 +80,13 @@ public class WeeklyReportJob implements Runnable {
         return Pair.of(key.getFirst(), leadMoveReport);
     }
 
-    // todo: implement
     private void handle(WeeklyReport report) {
-        System.out.println(report);
+        final GetUserRequest request = GetUserRequest.newBuilder().setUserId(report.getUserId()).build();
+
+        userService.getUser(request, DefaultStreamObserver.onNext(response -> {
+            final String email = response.getInfo().getEmail();
+            emailClient.sendEmail(report, email);
+        }));
     }
 
     private static Map<Pair<Long, Long>, List<MoveLeadLog>> mapMoveLeadLogs(Collection<MoveLeadLog> all) {

@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package users;
+
+option java_package = "com.proto.users";
+option java_multiple_files = true;
+
+message UserResponse {
+  int64 id = 1;
+  string username = 2;
+}
+
+message UserInfoResponse {
+  string email = 1;
+  string firstname = 2;
+  string lastname = 3;
+}
+
+message CurrentUserRequest {
+}
+
+message CurrentUserResponse {
+  UserResponse user = 1;
+  UserInfoResponse info = 2;
+}
+
+message CreateUserRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message CreateUserResponse {
+  UserResponse user = 1;
+}
+
+message GetUserRequest {
+  int64 userId = 1;
+}
+
+message GetUserResponse {
+  UserResponse user = 1;
+  UserInfoResponse info = 2;
+}
+
+service UserService {
+  rpc CurrentUser(CurrentUserRequest) returns (CurrentUserResponse) {};
+
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {};
+
+  rpc GetUser(GetUserRequest) returns (GetUserResponse) {};
+}
