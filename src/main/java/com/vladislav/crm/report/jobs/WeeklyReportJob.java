@@ -1,8 +1,8 @@
 package com.vladislav.crm.report.jobs;
 
 import com.vladislav.crm.report.documents.MoveLeadLog;
+import com.vladislav.crm.report.operations.GetAllMoveLeadLogOperation;
 import com.vladislav.crm.report.pojo.WeeklyReport;
-import com.vladislav.crm.report.repositories.MoveLeadLogRepository;
 import com.vladislav.crm.report.utils.LocalizedWeek;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
@@ -18,14 +18,14 @@ import java.util.function.Supplier;
 @RequiredArgsConstructor(onConstructor = @__(@Autowired))
 public class WeeklyReportJob implements Runnable {
 
-    private final MoveLeadLogRepository moveLeadLogRepository;
+    private final GetAllMoveLeadLogOperation getAllMoveLeadLogOperation;
 
     @Override
     @Scheduled(cron = "0 0 1 * * MON")
     public void run() {
         final LocalizedWeek localizedWeek = new LocalizedWeek();
 
-        final Collection<MoveLeadLog> all = moveLeadLogRepository.findAllByHappenedAtBetween(
+        final Collection<MoveLeadLog> all = getAllMoveLeadLogOperation.execute(
                 localizedWeek.getFirstWeekDateTime(), localizedWeek.getFirstWeekDateTime()
         );
 
