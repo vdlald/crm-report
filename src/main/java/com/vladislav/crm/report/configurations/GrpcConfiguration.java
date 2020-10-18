@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration;
 import java.util.List;
 
 @Configuration
-public class GrpcConfig {
+public class GrpcConfiguration {
 
     @Bean
     Server server(
