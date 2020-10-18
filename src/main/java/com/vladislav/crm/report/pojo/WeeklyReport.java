@@ -5,8 +5,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -14,7 +14,17 @@ import java.util.Map;
 @Accessors(chain = true)
 public class WeeklyReport {
 
-    // key - leadId, value - statusId
-    private Map<Long, Long> leadsMove = new HashMap<>();
+    private Long userId;
 
+    private List<LeadMoveReport> leadMoveReports = new ArrayList<>();
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Accessors(chain = true)
+    public static class LeadMoveReport {
+        private Long leadId;
+        private Long prevStatus;
+        private Long nextStatus;
+    }
 }
