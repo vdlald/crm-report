@@ -2,3 +2,6 @@ app:
   grpc:
     server:
       port: 50053
+    user-client:
+      host: localhost
+      port: 50051
