@@ -16,4 +16,7 @@ public interface MoveLeadLogRepository extends MongoRepository<MoveLeadLog, UUID
     Collection<MoveLeadLog> findAllByUserIdAndHappenedAtIsBetween(
             Long userId, LocalDateTime happenedAt, LocalDateTime happenedAt2
     );
+
+    @Query(value = "{ 'happenedAt' : { $gte: ?0, $lte: ?1 } }", sort = "{ 'happenedAt': 1 }")
+    Collection<MoveLeadLog> findAllByHappenedAtBetween(LocalDateTime happenedAt, LocalDateTime happenedAt2);
 }
