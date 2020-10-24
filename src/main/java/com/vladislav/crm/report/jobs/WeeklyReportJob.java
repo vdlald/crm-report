@@ -1,5 +1,9 @@
 package com.vladislav.crm.report.jobs;
 
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Paragraph;
 import com.proto.users.GetUserRequest;
 import com.proto.users.UserServiceGrpc;
 import com.vladislav.crm.report.clients.EmailClient;
@@ -19,6 +23,7 @@ import org.springframework.data.util.Pair;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.io.ByteArrayOutputStream;
 import java.util.*;
 import java.util.function.Supplier;
 
@@ -87,7 +92,6 @@ public class WeeklyReportJob implements Runnable {
         final Pair<Long, Long> key = pair.getKey();
         final Long leadId = key.getSecond();
         final List<MoveLeadLog> moveLeadLogs = pair.getValue();
-
         final MoveLeadLog firstLog = moveLeadLogs.get(0);
         final MoveLeadLog lastLog = moveLeadLogs.get(moveLeadLogs.size() - 1);
 
@@ -100,12 +104,43 @@ public class WeeklyReportJob implements Runnable {
     }
 
     private void handle(WeeklyReport report) {
-        final GetUserRequest request = GetUserRequest.newBuilder().setUserId(report.getUserId()).build();
+        final GetUserRequest request = GetUserRequest.newBuilder()
+                .setUserId(report.getUserId())
+                .build();
 
         userService.getUser(request, DefaultStreamObserver.onNext(response -> {
             final String email = response.getInfo().getEmail();
-            emailClient.sendEmail(report, email);
+            emailClient.sendEmail(makePdf(report), email);
         }));
+    }
+
+    private byte[] makePdf(WeeklyReport weeklyReport) {
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        final PdfWriter pdfWriter = new PdfWriter(outputStream);
+        final PdfDocument pdfDocument = new PdfDocument(pdfWriter);
+        final Document document = new Document(pdfDocument);
+
+        document.add(new Paragraph("Отчет за неделю"));
+
+        document.add(new Paragraph("Движение сделок"));
+        for (WeeklyReport.LeadMoveReport leadMoveReport : weeklyReport.getLeadMoveReports()) {
+            document.add(
+                    new Paragraph(
+                            String.format(
+                                    "%s перешла из %s в %s",
+                                    leadMoveReport.getLeadId(),
+                                    leadMoveReport.getPrevStatus(),
+                                    leadMoveReport.getNextStatus()
+                            )));
+        }
+
+        document.add(new Paragraph("Новые сделки"));
+        for (NewLeadReport newLeadReport : weeklyReport.getNewLeadReports()) {
+            document.add(new Paragraph(newLeadReport.getLeadId().toString()));
+        }
+
+        document.close();
+        return outputStream.toByteArray();
     }
 
     private static Map<Pair<Long, Long>, List<MoveLeadLog>> mapMoveLeadLogs(Collection<MoveLeadLog> all) {
