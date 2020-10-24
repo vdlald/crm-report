@@ -4,9 +4,12 @@ import com.proto.users.GetUserRequest;
 import com.proto.users.UserServiceGrpc;
 import com.vladislav.crm.report.clients.EmailClient;
 import com.vladislav.crm.report.documents.MoveLeadLog;
+import com.vladislav.crm.report.documents.NewLeadLog;
 import com.vladislav.crm.report.grpc.DefaultStreamObserver;
 import com.vladislav.crm.report.operations.GetAllMoveLeadLogOperation;
+import com.vladislav.crm.report.operations.GetAllNewLeadLogOperation;
 import com.vladislav.crm.report.pojo.WeeklyReport;
+import com.vladislav.crm.report.pojo.WeeklyReport.NewLeadReport;
 import com.vladislav.crm.report.utils.LocalizedWeek;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +28,7 @@ import java.util.function.Supplier;
 public class WeeklyReportJob implements Runnable {
 
     private final GetAllMoveLeadLogOperation getAllMoveLeadLogOperation;
+    private final GetAllNewLeadLogOperation getAllNewLeadLogOperation;
     private final UserServiceGrpc.UserServiceStub userService;
     private final EmailClient emailClient;
 
@@ -33,13 +37,17 @@ public class WeeklyReportJob implements Runnable {
     public void run() {
         final LocalizedWeek localizedWeek = new LocalizedWeek();
 
-        final Collection<MoveLeadLog> all = getAllMoveLeadLogOperation.execute(
+        final Collection<MoveLeadLog> moveLeadLogs = getAllMoveLeadLogOperation.execute(
                 localizedWeek.getFirstWeekDateTime(), localizedWeek.getFirstWeekDateTime()
         );
 
-        final Map<Pair<Long, Long>, List<MoveLeadLog>> indexToLeads = mapMoveLeadLogs(all);
+        final Collection<NewLeadLog> newLeadLogs = getAllNewLeadLogOperation.execute(
+                localizedWeek.getFirstWeekDateTime(), localizedWeek.getFirstWeekDateTime()
+        );
 
-        indexToLeads.entrySet()
+        final Map<Pair<Long, Long>, List<MoveLeadLog>> indexToLeads = mapMoveLeadLogs(moveLeadLogs);
+
+        final HashMap<Long, WeeklyReport> weeklyReports = indexToLeads.entrySet()
                 .parallelStream()
                 .map(this::makeLeadMoveReport)
                 .collect(
@@ -58,8 +66,19 @@ public class WeeklyReportJob implements Runnable {
                             }
                         },
                         Map::putAll
-                )
-                .values()
+                );
+
+        newLeadLogs.forEach(newLeadLog -> {
+            final Long userId = newLeadLog.getUserId();
+
+            final WeeklyReport weeklyReport = weeklyReports.get(userId);
+            final NewLeadReport report = new NewLeadReport()
+                    .setLeadId(newLeadLog.getLeadId());
+
+            weeklyReport.getNewLeadReports().add(report);
+        });
+
+        weeklyReports.values()
                 .parallelStream()
                 .forEach(this::handle);
     }
