@@ -15,6 +15,16 @@ message AddMoveLeadLogRequest {
 message AddMoveLeadLogResponse {
 }
 
+message AddNewLeadLogRequest {
+  int64 userId = 1;
+  int64 leadId = 2;
+}
+
+message AddNewLeadLogResponse {
+}
+
 service ReportService {
   rpc AddMoveLeadLog(AddMoveLeadLogRequest) returns (AddMoveLeadLogResponse);
+
+  rpc AddNewLeadLog(AddNewLeadLogRequest) returns (AddNewLeadLogResponse);
 }
