@@ -43,6 +43,11 @@ public class GrpcConfiguration {
     }
 
     @Bean
+    LeadServiceGrpc.LeadServiceBlockingStub leadServiceBlocking(Channel userChannel) {
+        return attachAuth(LeadServiceGrpc.newBlockingStub(userChannel));
+    }
+
+    @Bean
     Channel serverChannel(
             @Value("${app.grpc.user-client.host}") String host,
             @Value("${app.grpc.user-client.port}") Integer port

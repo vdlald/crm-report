@@ -4,9 +4,12 @@ import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.Document;
 import com.itextpdf.layout.element.Paragraph;
+import com.itextpdf.layout.property.TextAlignment;
 import com.proto.leads.LeadServiceGrpc.LeadServiceStub;
 import com.proto.leads.ReadLeadInfoForReportRequest;
 import com.proto.leads.ReadLeadInfoForReportResponse;
+import com.proto.leads.ReadLeadInfoRequest;
+import com.proto.leads.ReadLeadInfoResponse;
 import com.proto.users.GetUserRequest;
 import com.proto.users.UserServiceGrpc.UserServiceStub;
 import com.vladislav.crm.report.clients.EmailClient;
@@ -34,6 +37,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
+import static com.proto.leads.LeadServiceGrpc.LeadServiceBlockingStub;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor(onConstructor = @__(@Autowired))
@@ -43,6 +48,7 @@ public class WeeklyReportJob implements Runnable {
     private final GetAllNewLeadLogOperation getAllNewLeadLogOperation;
     private final UserServiceStub userService;
     private final LeadServiceStub leadService;
+    private final LeadServiceBlockingStub leadServiceBlocking;
     private final EmailClient emailClient;
 
     @Override
@@ -129,19 +135,19 @@ public class WeeklyReportJob implements Runnable {
         final PdfDocument pdfDocument = new PdfDocument(pdfWriter);
         final Document document = new Document(pdfDocument);
 
-        document.add(new Paragraph("Weekly report"));
+        document.add(new Paragraph("Weekly report").setFontSize(18).setBold().setTextAlignment(TextAlignment.CENTER));
 
-        document.add(new Paragraph("Leads movement"));
+        document.add(new Paragraph("Leads movement").setFontSize(16));
         final CountDownLatch latch = new CountDownLatch(1);
         val responseObserver = DefaultStreamObserver.<ReadLeadInfoForReportResponse>newBuilder()
                 .setOnNext(response -> {
                     final Paragraph paragraph = new Paragraph(
                             String.format(
-                                    "%s move from %s to %s",
+                                    "\"%s\" move from \"%s\" to \"%s\"",
                                     response.getLeadName(),
                                     response.getPrevStatusName(),
                                     response.getNextStatusName()
-                            ));
+                            )).setItalic();
                     synchronized (document) {
                         document.add(paragraph);
                     }
@@ -150,27 +156,27 @@ public class WeeklyReportJob implements Runnable {
                 .build();
         val requestStreamObserver = leadService.readLeadInfoForReport(responseObserver);
         for (WeeklyReport.LeadMoveReport leadMoveReport : weeklyReport.getLeadMoveReports()) {
-//            final Context fork = Context.current().fork();
-//            final Context old = fork.attach();
             requestStreamObserver.onNext(ReadLeadInfoForReportRequest.newBuilder()
                     .setLeadId(leadMoveReport.getLeadId())
                     .setPrevStatusId(leadMoveReport.getPrevStatus())
                     .setNextStatusId(leadMoveReport.getNextStatus())
                     .build());
-//            fork.detach(old);
         }
         requestStreamObserver.onCompleted();
 
         try {
-//            latch.await(2, TimeUnit.MINUTES);
-            latch.await(10, TimeUnit.SECONDS);
+            latch.await(2, TimeUnit.MINUTES);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
 
-        document.add(new Paragraph("New leads"));
+        document.add(new Paragraph("New leads").setFontSize(16));
         for (NewLeadReport newLeadReport : weeklyReport.getNewLeadReports()) {
-            document.add(new Paragraph(newLeadReport.getLeadId().toString()));
+            final ReadLeadInfoResponse response = leadServiceBlocking.readLeadInfo(ReadLeadInfoRequest.newBuilder()
+                    .setLeadId(newLeadReport.getLeadId())
+                    .build());
+
+            document.add(new Paragraph(response.getName()).setItalic());
         }
 
         document.close();

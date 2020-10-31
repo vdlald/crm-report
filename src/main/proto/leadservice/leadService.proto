@@ -34,8 +34,20 @@ message ReadLeadInfoForReportResponse {
   string nextStatusName = 3;
 }
 
+message ReadLeadInfoRequest {
+  int64 leadId = 1;
+}
+
+message ReadLeadInfoResponse {
+  int64 id = 1;
+  string name = 2;
+  string sale = 3;
+}
+
 service LeadService {
   rpc ReadLead(ReadLeadRequest) returns (LeadResponse) {};
+
+  rpc ReadLeadInfo(ReadLeadInfoRequest) returns (ReadLeadInfoResponse) {};
 
   rpc ReadLeads(stream ReadLeadRequest) returns (stream LeadResponse) {};
 
