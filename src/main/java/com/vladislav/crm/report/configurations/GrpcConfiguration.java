@@ -1,5 +1,6 @@
 package com.vladislav.crm.report.configurations;
 
+import com.proto.leads.LeadServiceGrpc;
 import com.proto.users.UserServiceGrpc;
 import io.grpc.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,7 +35,12 @@ public class GrpcConfiguration {
     }
 
     @Bean
-    Channel userChannel(
+    LeadServiceGrpc.LeadServiceStub leadService(Channel userChannel) {
+        return LeadServiceGrpc.newStub(userChannel);
+    }
+
+    @Bean
+    Channel serverChannel(
             @Value("${app.grpc.user-client.host}") String host,
             @Value("${app.grpc.user-client.port}") Integer port
     ) {

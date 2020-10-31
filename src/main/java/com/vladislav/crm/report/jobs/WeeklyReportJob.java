@@ -4,8 +4,11 @@ import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.Document;
 import com.itextpdf.layout.element.Paragraph;
+import com.proto.leads.LeadServiceGrpc.LeadServiceStub;
+import com.proto.leads.ReadLeadInfoForReportRequest;
+import com.proto.leads.ReadLeadInfoForReportResponse;
 import com.proto.users.GetUserRequest;
-import com.proto.users.UserServiceGrpc;
+import com.proto.users.UserServiceGrpc.UserServiceStub;
 import com.vladislav.crm.report.clients.EmailClient;
 import com.vladislav.crm.report.documents.MoveLeadLog;
 import com.vladislav.crm.report.documents.NewLeadLog;
@@ -25,6 +28,8 @@ import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayOutputStream;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 @Slf4j
@@ -34,7 +39,8 @@ public class WeeklyReportJob implements Runnable {
 
     private final GetAllMoveLeadLogOperation getAllMoveLeadLogOperation;
     private final GetAllNewLeadLogOperation getAllNewLeadLogOperation;
-    private final UserServiceGrpc.UserServiceStub userService;
+    private final UserServiceStub userService;
+    private final LeadServiceStub leadService;
     private final EmailClient emailClient;
 
     @Override
@@ -88,7 +94,9 @@ public class WeeklyReportJob implements Runnable {
                 .forEach(this::handle);
     }
 
-    private Pair<Long, WeeklyReport.LeadMoveReport> makeLeadMoveReport(Map.Entry<Pair<Long, Long>, List<MoveLeadLog>> pair) {
+    private Pair<Long, WeeklyReport.LeadMoveReport> makeLeadMoveReport(
+            Map.Entry<Pair<Long, Long>, List<MoveLeadLog>> pair
+    ) {
         final Pair<Long, Long> key = pair.getKey();
         final Long leadId = key.getSecond();
         final List<MoveLeadLog> moveLeadLogs = pair.getValue();
@@ -123,15 +131,36 @@ public class WeeklyReportJob implements Runnable {
         document.add(new Paragraph("Отчет за неделю"));
 
         document.add(new Paragraph("Движение сделок"));
-        for (WeeklyReport.LeadMoveReport leadMoveReport : weeklyReport.getLeadMoveReports()) {
-            document.add(
-                    new Paragraph(
+        final CountDownLatch latch = new CountDownLatch(1);
+        val responseObserver = DefaultStreamObserver.<ReadLeadInfoForReportResponse>newBuilder()
+                .setOnNext(response -> {
+                    final Paragraph paragraph = new Paragraph(
                             String.format(
                                     "%s перешла из %s в %s",
-                                    leadMoveReport.getLeadId(),
-                                    leadMoveReport.getPrevStatus(),
-                                    leadMoveReport.getNextStatus()
-                            )));
+                                    response.getLeadName(),
+                                    response.getPrevStatusName(),
+                                    response.getNextStatusName()
+                            ));
+                    synchronized (document) {
+                        document.add(paragraph);
+                    }
+                })
+                .setOnCompleted(latch::countDown)
+                .build();
+        val requestStreamObserver = leadService.readLeadInfoForReport(responseObserver);
+        for (WeeklyReport.LeadMoveReport leadMoveReport : weeklyReport.getLeadMoveReports()) {
+            requestStreamObserver.onNext(ReadLeadInfoForReportRequest.newBuilder()
+                    .setLeadId(leadMoveReport.getLeadId())
+                    .setPrevStatusId(leadMoveReport.getPrevStatus())
+                    .setNextStatusId(leadMoveReport.getNextStatus())
+                    .build());
+        }
+        requestStreamObserver.onCompleted();
+
+        try {
+            latch.await(2, TimeUnit.MINUTES);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
 
         document.add(new Paragraph("Новые сделки"));

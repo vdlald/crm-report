@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package todo;
+package report;
 
 option java_package = "com.proto.report";
 option java_multiple_files = true;
