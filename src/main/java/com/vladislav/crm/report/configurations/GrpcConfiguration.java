@@ -3,6 +3,9 @@ package com.vladislav.crm.report.configurations;
 import com.proto.leads.LeadServiceGrpc;
 import com.proto.users.UserServiceGrpc;
 import io.grpc.*;
+import io.grpc.stub.AbstractStub;
+import io.grpc.stub.MetadataUtils;
+import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -31,12 +34,12 @@ public class GrpcConfiguration {
 
     @Bean
     UserServiceGrpc.UserServiceStub userService(Channel userChannel) {
-        return UserServiceGrpc.newStub(userChannel);
+        return attachAuth(UserServiceGrpc.newStub(userChannel));
     }
 
     @Bean
     LeadServiceGrpc.LeadServiceStub leadService(Channel userChannel) {
-        return LeadServiceGrpc.newStub(userChannel);
+        return attachAuth(LeadServiceGrpc.newStub(userChannel));
     }
 
     @Bean
@@ -44,7 +47,16 @@ public class GrpcConfiguration {
             @Value("${app.grpc.user-client.host}") String host,
             @Value("${app.grpc.user-client.port}") Integer port
     ) {
-        return ManagedChannelBuilder.forAddress(host, port).build();
+        return ManagedChannelBuilder.forAddress(host, port)
+                .usePlaintext()
+                .build();
+    }
+
+    private <T extends AbstractStub<T>> T attachAuth(T stub) {
+        val key = Metadata.Key.of("Authorization", Metadata.ASCII_STRING_MARSHALLER);
+        final Metadata metadata = new Metadata();
+        metadata.put(key, "Basic ZGVtbzpkZW1vZGVtbw==");
+        return MetadataUtils.attachHeaders(stub, metadata);
     }
 }
 

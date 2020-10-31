@@ -11,7 +11,7 @@ public class EmailClient {
 
     public void sendEmail(byte[] pdf, String email) {
         try {
-            Files.write(Paths.get("./.temp/emails/" + email), pdf);
+            Files.write(Paths.get("emails/" + email + ".pdf"), pdf);
         } catch (IOException e) {
             e.printStackTrace();
         }
