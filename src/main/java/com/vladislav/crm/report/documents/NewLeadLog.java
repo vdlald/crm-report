@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.LocalDateTime;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -17,5 +19,7 @@ public class NewLeadLog {
 
     private Long userId;
     private Long leadId;
+
+    private LocalDateTime happenedAt = LocalDateTime.now();
 
 }

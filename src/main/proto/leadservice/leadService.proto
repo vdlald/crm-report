@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package leads;
+
+import "google/protobuf/empty.proto";
+
+option java_package = "com.proto.leads";
+option java_multiple_files = true;
+
+message LeadResponse {
+  int64 id = 1;
+  string name = 2;
+  string sale = 3;
+  int64 userId = 4;
+  int64 statusId = 5;
+  repeated int64 contactsId = 6;
+  string createdAt = 7;
+  string updatedAt = 8;
+}
+
+message ReadLeadRequest {
+  int64 leadId = 1;
+}
+
+message ReadLeadInfoForReportRequest {
+  int64 leadId = 1;
+  int64 prevStatusId = 2;
+  int64 nextStatusId = 3;
+}
+
+message ReadLeadInfoForReportResponse {
+  string leadName = 1;
+  string prevStatusName = 2;
+  string nextStatusName = 3;
+}
+
+message ReadLeadInfoRequest {
+  int64 leadId = 1;
+}
+
+message ReadLeadInfoResponse {
+  int64 id = 1;
+  string name = 2;
+  string sale = 3;
+}
+
+service LeadService {
+  rpc ReadLead(ReadLeadRequest) returns (LeadResponse) {};
+
+  rpc ReadLeadInfo(ReadLeadInfoRequest) returns (ReadLeadInfoResponse) {};
+
+  rpc ReadLeads(stream ReadLeadRequest) returns (stream LeadResponse) {};
+
+  rpc ReadLeadInfoForReport(stream ReadLeadInfoForReportRequest) returns (stream ReadLeadInfoForReportResponse) {};
+}

@@ -1,12 +1,19 @@
 package com.vladislav.crm.report.clients;
 
-import com.vladislav.crm.report.pojo.WeeklyReport;
 import org.springframework.stereotype.Component;
 
-// stub class
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 @Component
 public class EmailClient {
 
-    public void sendEmail(WeeklyReport weeklyReport, String email) {
+    public void sendEmail(byte[] pdf, String email) {
+        try {
+            Files.write(Path.of("emails/" + email + ".pdf"), pdf);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

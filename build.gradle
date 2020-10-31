@@ -21,10 +21,12 @@ repositories {
 }
 
 dependencies {
-    implementation 'io.grpc:grpc-netty-shaded:1.31.0'
-    implementation 'io.grpc:grpc-protobuf:1.31.0'
-    implementation 'io.grpc:grpc-stub:1.31.0'
+    implementation 'io.grpc:grpc-netty-shaded:1.33.0'
+    implementation 'io.grpc:grpc-protobuf:1.33.0'
+    implementation 'io.grpc:grpc-stub:1.33.0'
     compileOnly 'org.apache.tomcat:annotations-api:6.0.53'
+
+    compile 'com.itextpdf:itext7-core:7.1.13'
 
     implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
     compileOnly 'org.projectlombok:lombok'

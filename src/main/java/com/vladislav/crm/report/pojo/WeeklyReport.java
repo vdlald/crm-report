@@ -15,8 +15,8 @@ import java.util.List;
 public class WeeklyReport {
 
     private Long userId;
-
     private List<LeadMoveReport> leadMoveReports = new ArrayList<>();
+    private List<NewLeadReport> newLeadReports = new ArrayList<>();
 
     @Data
     @NoArgsConstructor
@@ -26,5 +26,13 @@ public class WeeklyReport {
         private Long leadId;
         private Long prevStatus;
         private Long nextStatus;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Accessors(chain = true)
+    public static class NewLeadReport {
+        private Long leadId;
     }
 }
