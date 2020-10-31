@@ -18,6 +18,7 @@ import com.vladislav.crm.report.operations.GetAllNewLeadLogOperation;
 import com.vladislav.crm.report.pojo.WeeklyReport;
 import com.vladislav.crm.report.pojo.WeeklyReport.NewLeadReport;
 import com.vladislav.crm.report.utils.LocalizedWeek;
+import io.grpc.Context;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -27,6 +28,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayOutputStream;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -48,13 +50,11 @@ public class WeeklyReportJob implements Runnable {
     public void run() {
         final LocalizedWeek localizedWeek = new LocalizedWeek();
 
-        final Collection<MoveLeadLog> moveLeadLogs = getAllMoveLeadLogOperation.execute(
-                localizedWeek.getFirstWeekDateTime(), localizedWeek.getFirstWeekDateTime()
-        );
+        final LocalDateTime firstWeekDateTime = localizedWeek.getFirstWeekDateTime();
+        final LocalDateTime lastWeekDateTime = localizedWeek.getLastWeekDateTime();
 
-        final Collection<NewLeadLog> newLeadLogs = getAllNewLeadLogOperation.execute(
-                localizedWeek.getFirstWeekDateTime(), localizedWeek.getFirstWeekDateTime()
-        );
+        final Collection<MoveLeadLog> moveLeadLogs = getAllMoveLeadLogOperation.execute(firstWeekDateTime, lastWeekDateTime);
+        final Collection<NewLeadLog> newLeadLogs = getAllNewLeadLogOperation.execute(firstWeekDateTime, lastWeekDateTime);
 
         final Map<Pair<Long, Long>, List<MoveLeadLog>> indexToLeads = mapMoveLeadLogs(moveLeadLogs);
 
@@ -116,10 +116,11 @@ public class WeeklyReportJob implements Runnable {
                 .setUserId(report.getUserId())
                 .build();
 
-        userService.getUser(request, DefaultStreamObserver.onNext(response -> {
+        Context.current().fork().run(() -> userService.getUser(request, DefaultStreamObserver.onNext(response -> {
             final String email = response.getInfo().getEmail();
-            emailClient.sendEmail(makePdf(report), email);
-        }));
+            final byte[] pdf = makePdf(report);
+            emailClient.sendEmail(pdf, email);
+        })));
     }
 
     private byte[] makePdf(WeeklyReport weeklyReport) {
@@ -128,15 +129,15 @@ public class WeeklyReportJob implements Runnable {
         final PdfDocument pdfDocument = new PdfDocument(pdfWriter);
         final Document document = new Document(pdfDocument);
 
-        document.add(new Paragraph("Отчет за неделю"));
+        document.add(new Paragraph("Weekly report"));
 
-        document.add(new Paragraph("Движение сделок"));
+        document.add(new Paragraph("Leads movement"));
         final CountDownLatch latch = new CountDownLatch(1);
         val responseObserver = DefaultStreamObserver.<ReadLeadInfoForReportResponse>newBuilder()
                 .setOnNext(response -> {
                     final Paragraph paragraph = new Paragraph(
                             String.format(
-                                    "%s перешла из %s в %s",
+                                    "%s move from %s to %s",
                                     response.getLeadName(),
                                     response.getPrevStatusName(),
                                     response.getNextStatusName()
@@ -149,21 +150,25 @@ public class WeeklyReportJob implements Runnable {
                 .build();
         val requestStreamObserver = leadService.readLeadInfoForReport(responseObserver);
         for (WeeklyReport.LeadMoveReport leadMoveReport : weeklyReport.getLeadMoveReports()) {
+//            final Context fork = Context.current().fork();
+//            final Context old = fork.attach();
             requestStreamObserver.onNext(ReadLeadInfoForReportRequest.newBuilder()
                     .setLeadId(leadMoveReport.getLeadId())
                     .setPrevStatusId(leadMoveReport.getPrevStatus())
                     .setNextStatusId(leadMoveReport.getNextStatus())
                     .build());
+//            fork.detach(old);
         }
         requestStreamObserver.onCompleted();
 
         try {
-            latch.await(2, TimeUnit.MINUTES);
+//            latch.await(2, TimeUnit.MINUTES);
+            latch.await(10, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
 
-        document.add(new Paragraph("Новые сделки"));
+        document.add(new Paragraph("New leads"));
         for (NewLeadReport newLeadReport : weeklyReport.getNewLeadReports()) {
             document.add(new Paragraph(newLeadReport.getLeadId().toString()));
         }
