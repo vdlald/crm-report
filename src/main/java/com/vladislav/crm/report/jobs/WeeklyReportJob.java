@@ -18,6 +18,7 @@ import com.vladislav.crm.report.operations.GetAllNewLeadLogOperation;
 import com.vladislav.crm.report.pojo.WeeklyReport;
 import com.vladislav.crm.report.pojo.WeeklyReport.NewLeadReport;
 import com.vladislav.crm.report.utils.LocalizedWeek;
+import io.grpc.Context;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -115,11 +116,11 @@ public class WeeklyReportJob implements Runnable {
                 .setUserId(report.getUserId())
                 .build();
 
-        userService.getUser(request, DefaultStreamObserver.onNext(response -> {
+        Context.current().fork().run(() -> userService.getUser(request, DefaultStreamObserver.onNext(response -> {
             final String email = response.getInfo().getEmail();
             final byte[] pdf = makePdf(report);
             emailClient.sendEmail(pdf, email);
-        }));
+        })));
     }
 
     private byte[] makePdf(WeeklyReport weeklyReport) {
@@ -149,11 +150,14 @@ public class WeeklyReportJob implements Runnable {
                 .build();
         val requestStreamObserver = leadService.readLeadInfoForReport(responseObserver);
         for (WeeklyReport.LeadMoveReport leadMoveReport : weeklyReport.getLeadMoveReports()) {
+//            final Context fork = Context.current().fork();
+//            final Context old = fork.attach();
             requestStreamObserver.onNext(ReadLeadInfoForReportRequest.newBuilder()
                     .setLeadId(leadMoveReport.getLeadId())
                     .setPrevStatusId(leadMoveReport.getPrevStatus())
                     .setNextStatusId(leadMoveReport.getNextStatus())
                     .build());
+//            fork.detach(old);
         }
         requestStreamObserver.onCompleted();
 
