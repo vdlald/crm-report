@@ -60,7 +60,7 @@ public class GrpcConfiguration {
     private <T extends AbstractStub<T>> T attachAuth(T stub) {
         val key = Metadata.Key.of("Authorization", Metadata.ASCII_STRING_MARSHALLER);
         final Metadata metadata = new Metadata();
-        metadata.put(key, "Basic ZGVtbzpkZW1vZGVtbw==");
+        metadata.put(key, "Basic cmVwb3J0U2VydmljZTpkZW1vZGVtbw==");
         return MetadataUtils.attachHeaders(stub, metadata);
     }
 }
