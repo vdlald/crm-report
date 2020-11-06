@@ -10,8 +10,8 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 
-@Service
 @Slf4j
+@Service
 @RequiredArgsConstructor(onConstructor = @__(@Autowired))
 public class GrpcServer implements ApplicationRunner {
 
@@ -21,7 +21,6 @@ public class GrpcServer implements ApplicationRunner {
     public void run(ApplicationArguments args) throws Exception {
         startServer();
         Runtime.getRuntime().addShutdownHook(new Thread(this::stopServer));
-        server.awaitTermination();
     }
 
     private void startServer() throws IOException {
