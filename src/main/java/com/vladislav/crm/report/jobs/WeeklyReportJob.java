@@ -19,6 +19,7 @@ import com.vladislav.crm.report.grpc.DefaultStreamObserver;
 import com.vladislav.crm.report.operations.GetAllMoveLeadLogOperation;
 import com.vladislav.crm.report.operations.GetAllNewLeadLogOperation;
 import com.vladislav.crm.report.pojo.WeeklyReport;
+import com.vladislav.crm.report.pojo.WeeklyReport.LeadMoveReport;
 import com.vladislav.crm.report.pojo.WeeklyReport.NewLeadReport;
 import com.vladislav.crm.report.utils.LocalizedWeek;
 import io.grpc.Context;
@@ -35,7 +36,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import static com.proto.leads.LeadServiceGrpc.LeadServiceBlockingStub;
 
@@ -64,25 +65,23 @@ public class WeeklyReportJob implements Runnable {
 
         final Map<Pair<Long, Long>, List<MoveLeadLog>> indexToLeads = mapMoveLeadLogs(moveLeadLogs);
 
-        final HashMap<Long, WeeklyReport> weeklyReports = indexToLeads.entrySet()
+        final Map<Long, WeeklyReport> weeklyReports = indexToLeads.entrySet()
                 .parallelStream()
                 .map(this::makeLeadMoveReport)
                 .collect(
-                        (Supplier<HashMap<Long, WeeklyReport>>) HashMap::new,
-                        (map, pairReport) -> {
-                            final Long userId = pairReport.getFirst();
-                            val leadMoveReport = pairReport.getSecond();
-                            final WeeklyReport weeklyReport = map.get(userId);
-                            if (weeklyReport == null) {
-                                final WeeklyReport newWeeklyReport = new WeeklyReport();
-                                newWeeklyReport.setUserId(userId);
-                                newWeeklyReport.getLeadMoveReports().add(leadMoveReport);
-                                map.put(userId, newWeeklyReport);
-                            } else {
-                                weeklyReport.getLeadMoveReports().add(leadMoveReport);
-                            }
-                        },
-                        Map::putAll
+                        Collectors.toMap(
+                                Pair::getFirst,
+                                t -> {
+                                    final LeadMoveReport report = t.getSecond();
+                                    final WeeklyReport weeklyReport = new WeeklyReport().setUserId(t.getFirst());
+                                    weeklyReport.getLeadMoveReports().add(report);
+                                    return weeklyReport;
+                                },
+                                (r1, r2) -> {
+                                    r1.getLeadMoveReports().addAll(r2.getLeadMoveReports());
+                                    return r1;
+                                }
+                        )
                 );
 
         newLeadLogs.forEach(newLeadLog -> {
@@ -100,7 +99,7 @@ public class WeeklyReportJob implements Runnable {
                 .forEach(this::handle);
     }
 
-    private Pair<Long, WeeklyReport.LeadMoveReport> makeLeadMoveReport(
+    private Pair<Long, LeadMoveReport> makeLeadMoveReport(
             Map.Entry<Pair<Long, Long>, List<MoveLeadLog>> pair
     ) {
         final Pair<Long, Long> key = pair.getKey();
@@ -109,7 +108,7 @@ public class WeeklyReportJob implements Runnable {
         final MoveLeadLog firstLog = moveLeadLogs.get(0);
         final MoveLeadLog lastLog = moveLeadLogs.get(moveLeadLogs.size() - 1);
 
-        final WeeklyReport.LeadMoveReport leadMoveReport = new WeeklyReport.LeadMoveReport()
+        final LeadMoveReport leadMoveReport = new LeadMoveReport()
                 .setLeadId(leadId)
                 .setPrevStatus(firstLog.getPrevStatusId())
                 .setNextStatus(lastLog.getNextStatusId());
@@ -155,7 +154,7 @@ public class WeeklyReportJob implements Runnable {
                 .setOnCompleted(latch::countDown)
                 .build();
         val requestStreamObserver = leadService.readLeadInfoForReport(responseObserver);
-        for (WeeklyReport.LeadMoveReport leadMoveReport : weeklyReport.getLeadMoveReports()) {
+        for (LeadMoveReport leadMoveReport : weeklyReport.getLeadMoveReports()) {
             requestStreamObserver.onNext(ReadLeadInfoForReportRequest.newBuilder()
                     .setLeadId(leadMoveReport.getLeadId())
                     .setPrevStatusId(leadMoveReport.getPrevStatus())
